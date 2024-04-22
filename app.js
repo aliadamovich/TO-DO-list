@@ -59,3 +59,25 @@ function createCheckBox(task, user) {
 		`
 	);
 }
+
+// document.querySelector('button').addEventListener('click', newTodo);
+document.querySelector('form').addEventListener('submit', handleOnChange)
+
+function handleOnChange(e) {
+	e.preventDefault();
+
+	let inputValue = document.getElementById('new-todo').value;
+	let select = document.getElementById('user-todo');
+	if (select.value && inputValue) {
+		sendToServer();
+	} else {
+		alert('Required fields are not filled!!!');
+		
+	}
+}
+
+// function newTodo() {
+// 	let value = document.getElementById('new-todo').value;
+// 	let author = document.querySelector('');
+// 	document.querySelector('');
+// }
