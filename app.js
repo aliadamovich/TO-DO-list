@@ -1,50 +1,62 @@
 
 let currentId = 200;
 
+let users = [];
+let tasks = [];
 
-document.addEventListener("DOMContentLoaded", loadUsers);
-document.addEventListener("DOMContentLoaded", loadTasks);
+const todoList = document.getElementById('todo-list');
 
+document.addEventListener("DOMContentLoaded", initApp);
 
-function loadUsers() {
-	fetch('https://jsonplaceholder.typicode.com/users')
-	.then(response => response.json())
+function initApp() {
+	Promise.all([loadUsers(), loadTasks()]).then( values => {
+		[users, tasks] = values;
 
-	.then(data => {
-		addUser(data)
-	})
-}
-
-function addUser(users) {
-	const select = document.getElementById('user-todo');
-	users.forEach(user => {
-		let newUser = new Option(user.name, user.id);
-		select.append(newUser)
-	})
-}
-
-function loadTasks() {
-	fetch('https://jsonplaceholder.typicode.com/todos')
-		.then(response => response.json())
-		.then(data => {
-			data.forEach(item => {
-				createCheckBox(item.title, item.userId, item.id)
-			})
+		//add users from server
+		users.forEach(user => {
+			const select = document.getElementById('user-todo');
+			let newUser = new Option(user.name, user.id);
+			select.append(newUser)
 		})
+
+		//add tasks from server
+		tasks.forEach(item => {
+			createCheckBox(item.title, item.userId, item.id, item.completed)
+		})
+	})
+}
+
+async function loadUsers() {
+	const resp = await fetch('https://jsonplaceholder.typicode.com/users');
+	const data = await resp.json();
+	return data;
+
+}
+async function loadTasks() {
+	const resp = await fetch('https://jsonplaceholder.typicode.com/todos');
+	const data = await resp.json();
+	return data;
 }
 
 
-function createCheckBox(task, user, id) {
-	
-	document.getElementById('todo-list').insertAdjacentHTML(
+function createCheckBox(task, user, id, completed) {
+	const addStatus = () => completed ? 'checked' : '';
+	function verifyUser (userId) {
+		let foundUser = users.find(user => user.id == userId);
+		console.log(foundUser.name);
+		
+		return foundUser.name;
+	}
+	todoList.insertAdjacentHTML(
 		'afterbegin',
 		`
 		<li class="todo-item">
-		<input data-id=${id} type="checkbox">${task} by ${user}
-		<span class="close">&#9747</span>
+		<input data-id=${id} ${addStatus()} type="checkbox">${task} <i>by</i> <b>${verifyUser(user)}</b>
+		<span class="close">&times;</span>
 		</li>
 		`
 	);
+
 }
 
 document.querySelector('form').addEventListener('submit', submitTask);
@@ -56,10 +68,12 @@ function submitTask(e) {
 
 	let inputValue = document.getElementById('new-todo').value.trim();
 	let select = document.getElementById('user-todo');
-	let selectedOption = select.options[select.selectedIndex]
+	let selectedOption = select.options[select.selectedIndex];
+
+	
 	if (select.value && inputValue) {
 		sendTaskToServer(inputValue, selectedOption.innerText);
-		createCheckBox(inputValue, selectedOption.innerText, currentId);
+		createCheckBox(inputValue, selectedOption.value, currentId, false);
 	} else {
 		alert('Required fields are not filled!!!');
 	}
