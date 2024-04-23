@@ -1,13 +1,17 @@
 
+//Globals
 let currentId = 200;
-
 let users = [];
 let tasks = [];
-
 const todoList = document.getElementById('todo-list');
 
-document.addEventListener("DOMContentLoaded", initApp);
 
+//!attach events
+document.addEventListener("DOMContentLoaded", initApp);
+document.querySelector('form').addEventListener('submit', submitTask);
+
+
+//!event logic
 function initApp() {
 	Promise.all([loadUsers(), loadTasks()]).then( values => {
 		[users, tasks] = values;
@@ -26,27 +30,53 @@ function initApp() {
 	})
 }
 
-async function loadUsers() {
-	const resp = await fetch('https://jsonplaceholder.typicode.com/users');
-	const data = await resp.json();
-	return data;
+function submitTask(e) {
+	e.preventDefault();
 
+	const form = document.querySelector('form');
+	let inputValue = form.todo.value.trim(); //получила доступ к инпут по name в форме
+	let select = form.user; //получила доступ к select по name в форме
+	console.log(select.options[select.selectedIndex].textContent);
+	
+	if (select.value && inputValue) {
+		sendTaskToServer(inputValue, select.value);
+	} else {
+		alert('Required fields are not filled!!!');
+	}
 }
-async function loadTasks() {
-	const resp = await fetch('https://jsonplaceholder.typicode.com/todos');
-	const data = await resp.json();
-	return data;
+
+function changeTaskStatus(e) {
+	let checkBox = e.target.closest('input');
+	let inputId = checkBox.dataset.id;
+
+	
+	if (checkBox.checked) {
+		sendStatusToServer(inputId, true)
+	} else {
+		sendStatusToServer(inputId, false)
+	}
 }
 
+function handleClose(e) {
 
+	let closeCross = e.target.closest('.close');
+	
+	if (closeCross) {
+		let parent = closeCross.closest('li');
+		let deletedId = parent.firstElementChild.dataset.id;
+		
+		deleteTaskFromServer(deletedId);
+	}
+}
+
+//! Basic logic
 function createCheckBox(task, user, id, completed) {
 	const addStatus = () => completed ? 'checked' : '';
-	function verifyUser (userId) {
+	function verifyUser(userId) {
 		let foundUser = users.find(user => user.id == userId);
-		console.log(foundUser.name);
-		
 		return foundUser.name;
 	}
+
 	todoList.insertAdjacentHTML(
 		'afterbegin',
 		`
@@ -56,92 +86,53 @@ function createCheckBox(task, user, id, completed) {
 		</li>
 		`
 	);
+	document.querySelector('#todo-list').addEventListener('click', handleClose);
+	document.querySelector('#todo-list').addEventListener('change', changeTaskStatus);
+}
+
+function deleteTask(dataId) {
+	let todo = todoList.querySelector(`[data-id="${dataId}"]`)
+	todo.parentElement.remove();
+}
+
+//!async logic
+async function loadUsers() {
+	const resp = await fetch('https://jsonplaceholder.typicode.com/users');
+	const data = await resp.json();
+	return data;
 
 }
 
-document.querySelector('form').addEventListener('submit', submitTask);
-document.querySelector('#todo-list').addEventListener('click', deleteTask);
-document.querySelector('#todo-list').addEventListener('change', changeTaskStatus);
-
-function submitTask(e) {
-	e.preventDefault();
-
-	let inputValue = document.getElementById('new-todo').value.trim();
-	let select = document.getElementById('user-todo');
-	let selectedOption = select.options[select.selectedIndex];
-
-	
-	if (select.value && inputValue) {
-		sendTaskToServer(inputValue, selectedOption.innerText);
-		createCheckBox(inputValue, selectedOption.value, currentId, false);
-	} else {
-		alert('Required fields are not filled!!!');
-	}
+async function loadTasks() {
+	const resp = await fetch('https://jsonplaceholder.typicode.com/todos');
+	const data = await resp.json();
+	return data;
 }
 
-function deleteTask(e) {
-	let closeCross = e.target.closest('.close');
-	
-	
-	if (closeCross) {
-		let delededId = closeCross.previousElementSibling.dataset.id;
-		closeCross.closest('.todo-item').remove();
-		deleteTaskFromServer(delededId);
-	}
-}
+async function sendTaskToServer(task, name) {
 
-function sendTaskToServer(task, name) {
-	currentId++;
-
-	fetch('https://jsonplaceholder.typicode.com/todos', {
+	const resp = await fetch('https://jsonplaceholder.typicode.com/todos', {
 		method: 'POST',
 		body: JSON.stringify({
-			"userId": `${name}`,
-			"id": `${currentId}`,
-			"title": `${task}`,
+			"userId": name,
+			"title": task,
 			"completed": false
 		}),
 		headers: {
 			'Content-Type': 'application/json'
 		},
-	})
-	.then(resp => {
-		if(resp.ok) {
-			return resp.json()
-		}
-		throw new Error('failed to add')
-	})
-	.then(console.log)
-	.catch(console.error)
+	});
+	const serverTask = await resp.json(); //в ответ нам приходит сам элемент task (мы берем его id который сервер присваивает 
+	//автоматически и передаем в функцию createCheckBox)
+	console.log(serverTask);
+	
+	//только после того как таск был отправлен на сервер, создаем его на сайте
+	createCheckBox(task, name, serverTask.id, false)
+
 }
 
-function deleteTaskFromServer(id) {
-
-	fetch(`https://jsonplaceholder.typicode.com/todos/${id}`, {
-		method: 'DELETE',
-	})
-		.then(resp => {
-			if (resp.ok) {
-				return resp.json()
-			}
-			throw new Error('failed to add')
-		})
-		.then(console.log)
-		.catch(console.error)
-}
-
-function changeTaskStatus(e) {
-		let checkBox = e.target.closest('input')
-		let inputId = checkBox.dataset.id;
-		if (checkBox.checked) {
-			sendStatusToServer(inputId, true)
-		} else {
-			sendStatusToServer(inputId, false)
-		}
-}
-
-function sendStatusToServer(id, status) {
-	fetch(`https://jsonplaceholder.typicode.com/todos/${id}`, {
+async function sendStatusToServer(id, status) {
+	const resp = await fetch(`https://jsonplaceholder.typicode.com/todos/${id}`, {
 		method: "PATCH",
 		body: JSON.stringify({
 			"completed": `${status}`
@@ -149,13 +140,25 @@ function sendStatusToServer(id, status) {
 		headers: {
 			'Content-Type': 'application/json'
 		},
-	})
-		.then(resp => {
-			if (resp.ok) {
-				return resp.json()
-			}
-			throw new Error('failed to add')
-		})
-		.then(console.log)
-		.catch(console.error)
+	});
+	if (!resp.ok) {
+		//error message
+	}
 }
+
+async function deleteTaskFromServer(id) {
+	const resp = await fetch(`https://jsonplaceholder.typicode.com/todos/${id}`, {
+		method: 'DELETE',
+	});
+
+	if (resp.ok) {
+		deleteTask(id)
+	}
+
+}
+
+
+
+
+
+
