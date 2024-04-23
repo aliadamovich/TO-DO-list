@@ -95,70 +95,92 @@ function deleteTask(dataId) {
 	todo.parentElement.remove();
 }
 
+function alertError(err) {
+	alert(err.message)
+}
+
 //!async logic
 async function loadUsers() {
-	const resp = await fetch('https://jsonplaceholder.typicode.com/users');
-	const data = await resp.json();
-	return data;
-
+	try {
+		const resp = await fetch('https://jsonplaceholder.typicode.com/users');
+		const data = await resp.json();
+		return data;
+		
+	} catch (error) {
+		alertError(error)
+	}
 }
 
 async function loadTasks() {
-	const resp = await fetch('https://jsonplaceholder.typicode.com/todos');
-	const data = await resp.json();
-	return data;
+	try {
+		const resp = await fetch('https://jsonplaceholder.typicode.com/todos');
+		const data = await resp.json();
+		return data;
+		
+	} catch (error) {
+		alertError(error)
+	}
 }
 
 async function sendTaskToServer(task, name) {
-
-	const resp = await fetch('https://jsonplaceholder.typicode.com/todos', {
-		method: 'POST',
-		body: JSON.stringify({
-			"userId": name,
-			"title": task,
-			"completed": false
-		}),
-		headers: {
-			'Content-Type': 'application/json'
-		},
-	});
-	const serverTask = await resp.json(); //в ответ нам приходит сам элемент task (мы берем его id который сервер присваивает 
-	//автоматически и передаем в функцию createCheckBox)
-	console.log(serverTask);
-	
-	//только после того как таск был отправлен на сервер, создаем его на сайте
-	createCheckBox(task, name, serverTask.id, false)
-
+	try {
+		const resp = await fetch('https://jsonplaceholder.typicode.com/todos', {
+			method: 'POST',
+			body: JSON.stringify({
+				"userId": name,
+				"title": task,
+				"completed": false
+			}),
+			headers: {
+				'Content-Type': 'application/json'
+			},
+		});
+		const serverTask = await resp.json(); //в ответ нам приходит сам элемент task (мы берем его id который сервер присваивает 
+		//автоматически и передаем в функцию createCheckBox)
+		console.log(serverTask);
+		
+		//только после того как таск был отправлен на сервер, создаем его на сайте
+		createCheckBox(task, name, serverTask.id, false)
+		
+	} catch (error) {
+		alertError(error)
+	}
 }
 
 async function sendStatusToServer(id, status) {
-	const resp = await fetch(`https://jsonplaceholder.typicode.com/todos/${id}`, {
-		method: "PATCH",
-		body: JSON.stringify({
-			"completed": `${status}`
-		}),
-		headers: {
-			'Content-Type': 'application/json'
-		},
-	});
-	if (!resp.ok) {
-		//error message
+	try {
+		const resp = await fetch(`https://jsonplaceholder.typicode.com/todos/${id}`, {
+			method: "PATCH",
+			body: JSON.stringify({
+				"completed": `${status}`
+			}),
+			headers: {
+				'Content-Type': 'application/json'
+			},
+		});
+		if (!resp.ok) {
+			throw new Error('Failed to connect to the server.Please try again later!');
+		}
+		
+	} catch (error) {
+		alertError(error)
 	}
 }
 
 async function deleteTaskFromServer(id) {
-	const resp = await fetch(`https://jsonplaceholder.typicode.com/todos/${id}`, {
-		method: 'DELETE',
-	});
-
-	if (resp.ok) {
-		deleteTask(id)
+	try {
+		const resp = await fetch(`https://jsonplaceholder.typicode.com/todos/${id}`, {
+			method: 'DELETE',
+		});
+	
+		if (resp.ok) {
+			deleteTask(id)
+		} else {
+			throw new Error('Failed to connect to the server.Please try again later!');
+		}
+		
+	} catch (error) {
+		alertError(error)
 	}
-
 }
-
-
-
-
-
 
